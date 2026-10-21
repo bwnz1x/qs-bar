@@ -1,18 +1,18 @@
 # qs-bar :3
 
+![Screenshot](sample/sample1.png)
+
 My quickshell config, for Hyprland. Takes on inspiration with apple dynamic island design
-Feel free
----
 
 ##  Features
 3 different island each with different usage
 
 ### Left Island: Hardware Monitor
-* **On Idle:** RAM usage (%), CPU temperature (°C), Battery (%).
-* **On Hover:** Hover to reveal more indepth info:
-  * **Memory:** Exact used vs. total GB.
-  * **CPU Temperature:** Show in a graph.
-  * **Battery Details:** Charge percentage, live power draw in Watts, and estimated time remaining (or time to full).
+* On Idle: RAM usage (%), CPU temperature (°C), Battery (%).
+* On Hover: Hover to reveal more indepth info:
+  * Memory: Exact used vs. total GB.
+  * CPU Temperature: Show in a graph.
+  * Battery Details: Charge percentage, live power draw in Watts, and estimated time remaining (or time to full).
 
 ### Middle Island: Clock, Media & Notifs
 * Cycle through 3 different menu when click on empty space on the island. 
@@ -59,7 +59,6 @@ The installer will:
 3. Deploy QML files to `~/.config/quickshell/island/` and helper scripts to `~/.config/hypr/scripts/`.
 4. Auto-detect your touchpad's device ID and configure the touchpad toggle.
 
----
 
 ## Hyprland Integration
 
