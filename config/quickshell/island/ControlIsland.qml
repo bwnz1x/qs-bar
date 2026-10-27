@@ -18,6 +18,8 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "dynamic-island-control"
     WlrLayershell.layer: WlrLayer.Top
+    // layer-shell windows get no keyboard input by default; needed for the password box
+    WlrLayershell.keyboardFocus: win.expanded ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     mask: Region { item: island }
 
@@ -28,7 +30,7 @@ PanelWindow {
     property string activeTab: "actions"
 
     Timer { id: expandTimer; interval: 180; onTriggered: win.expanded = true }
-    Timer { id: collapseTimer; interval: 350; onTriggered: win.expanded = false }
+    Timer { id: collapseTimer; interval: 350; onTriggered: if (win.pendingSsid === "") win.expanded = false }
 
     // ───────────────────────── Wi-Fi / Ethernet Data ─────────────────────────
 
@@ -90,6 +92,7 @@ PanelWindow {
                     const o = best[ssid]
                     if (!o || n.active || (!o.active && n.signal > o.signal)) best[ssid] = n
                 }
+                if (!savedProc.running) savedProc.running = true
                 win.networks = Object.values(best).sort((a, b) => (b.active - a.active) || (b.signal - a.signal))
             }
         }
@@ -99,6 +102,15 @@ PanelWindow {
         id: rescanWifiProc
         command: ["nmcli", "dev", "wifi", "rescan"]
         onExited: listWifiProc.running = true
+    }
+
+    property var savedSsids: []
+    Process {
+        id: savedProc
+        command: ["sh", "-c", "nmcli -t -f NAME,TYPE con show | sed -n 's/:802-11-wireless$//p' | while IFS= read -r n; do nmcli -g 802-11-wireless.ssid con show \"$n\" 2>/dev/null; done"]
+        stdout: StdioCollector {
+            onStreamFinished: win.savedSsids = text.trim().split("\n").filter(x => x)
+        }
     }
 
     function scanWifi() {
@@ -599,6 +611,13 @@ PanelWindow {
                                     }
 
                                     Text {
+                                        visible: win.savedSsids.indexOf(netItem.modelData.ssid) >= 0
+                                        text: "Saved"
+                                        color: Style.dim
+                                        font { family: Style.font; pixelSize: 10 }
+                                    }
+
+                                    Text {
                                         visible: netItem.modelData.secure
                                         text: "\uf023"
                                         color: Style.dim
@@ -613,14 +632,12 @@ PanelWindow {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         if (netItem.modelData.active) return
-                                        if (netItem.modelData.secure) {
-                                            if (win.pendingSsid === netItem.modelData.ssid) {
-                                                win.pendingSsid = ""
-                                            } else {
-                                                win.pendingSsid = netItem.modelData.ssid
-                                                win.pendingPassword = ""
-                                            }
+                                        if (win.pendingSsid === netItem.modelData.ssid) {
+                                            win.pendingSsid = ""
                                         } else {
+                                            // saved profile connects directly; if that fails on a
+                                            // secured network the password prompt is shown
+                                            win.pendingSsid = ""
                                             win.connectToWifi(netItem.modelData.ssid, "")
                                         }
                                     }
@@ -634,6 +651,9 @@ PanelWindow {
                                 height: 34
                                 radius: 6
                                 color: "#22ffffff"
+                                onVisibleChanged: if (visible) focusTimer.restart()
+                                Timer { id: focusTimer; interval: 80; onTriggered: pwInput.forceActiveFocus() }
+                                MouseArea { anchors.fill: parent; onClicked: pwInput.forceActiveFocus() }
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -645,8 +665,9 @@ PanelWindow {
                                         echoMode: TextInput.Password
                                         color: Style.text
                                         font { family: Style.font; pixelSize: 12 }
-                                        focus: visible
+                                        selectByMouse: true
                                         onAccepted: win.connectToWifi(netItem.modelData.ssid, text)
+                                        Keys.onEscapePressed: win.pendingSsid = ""
 
                                         Text {
                                             visible: parent.text === ""
